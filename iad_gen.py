@@ -26,7 +26,9 @@ def read_files_in_dir(directory):
 def make_sequence_example(
 	img_raw, 
 	first_action,
-	example_id):
+	example_id,
+	c3d_depth,
+	num_channels):
 
 	print(first_action, example_id)
 
@@ -41,6 +43,8 @@ def make_sequence_example(
 	# ---- label data ----
 
 	ex.context.feature["total_lab"].int64_list.value.append(first_action)
+	ex.context.feature["c3d_depth"].int64_list.value.append(c3d_depth)
+	ex.context.feature["num_channels"].int64_list.value.append(num_channels)
 	
 	# ---- data sequences ----
 
@@ -49,7 +53,7 @@ def make_sequence_example(
 		print("newShape:", np.asarray(data).astype(dtype).shape)
 		fl_data.append(np.asarray(data).astype(dtype).tostring())
 
-	load_array(ex, "img_raw", img_raw, np.uint8)
+	load_array(ex, "img_raw", img_raw, np.float32)
 
 	return ex
 
@@ -99,7 +103,7 @@ def generate_model_input(placeholders, data_source, sess):
 
 	return placeholder_values, information_values
 
-def convert_to_IAD_input(placeholders, tf_records, sess, c3d_model, thresholding_approach, compression_method, video_name):
+def convert_to_IAD_input(placeholders, tf_records, sess, c3d_model, thresholding_approach, compression_method, video_name, c3d_depth):
 	'''
 	Provides the training input for the ITR network by generating an IAD from the
 	activation map of the C3D network. Outputs two dictionaries. The first contains
@@ -118,7 +122,11 @@ def convert_to_IAD_input(placeholders, tf_records, sess, c3d_model, thresholding
 	print(c3d_activation_map.shape)
 
 	thresholded_data = thresholding(c3d_activation_map[0], info_values["data_ratio"], compression_method, thresholding_approach)
-	ex = make_sequence_example(thresholded_data, info_values["label"][0], info_values["example_id"][0])
+
+	print(thresholded_data)
+
+
+	ex = make_sequence_example(thresholded_data, info_values["label"][0], info_values["example_id"][0], c3d_depth, compression_method["value"])
 	print("write to: ", video_name)
 	writer = tf.python_io.TFRecordWriter(video_name)
 	writer.write(ex.SerializeToString())
@@ -128,7 +136,7 @@ if __name__ == '__main__':
 
 	# open the files 
  
-	compression_method={"type":"peaks", "value":5, "num_channels":5}
+	compression_method={"type":"peaks", "value":10, "num_channels":10}
 
 	# setup variables
 	placeholders = c3d.get_input_placeholder(1)
@@ -183,7 +191,7 @@ if __name__ == '__main__':
 
 
 				
-				convert_to_IAD_input(placeholders, src, sess, c3d_model, "norm", compression_method, new_name)
+				convert_to_IAD_input(placeholders, src, sess, c3d_model, "norm", compression_method, new_name, c3d_depth)
 
 			coord.request_stop()
 			coord.join(threads)
