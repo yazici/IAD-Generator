@@ -123,11 +123,18 @@ def convert_to_IAD_input(placeholders, tf_records, sess, c3d_model, thresholding
 
 	thresholded_data = thresholding(c3d_activation_map[0], info_values["data_ratio"], compression_method, thresholding_approach)
 
+<<<<<<< HEAD
 	print(thresholded_data.shape)
 	print(thresholded_data)
 
 	
 	ex = make_sequence_example(thresholded_data, info_values["label"][0], info_values["example_id"][0], c3d_depth, compression_method["num_channels"])
+=======
+	print(thresholded_data)
+
+
+	ex = make_sequence_example(thresholded_data, info_values["label"][0], info_values["example_id"][0], c3d_depth, compression_method["value"])
+>>>>>>> d40a470fc0cea6bafa8ea91c753c767d0695895b
 	print("write to: ", video_name)
 	writer = tf.python_io.TFRecordWriter(video_name)
 	writer.write(ex.SerializeToString())
@@ -138,9 +145,13 @@ if __name__ == '__main__':
 
 	# open the files 
  
+<<<<<<< HEAD
  	compression_method={"type":"max", "value":1, "num_channels":1}
  	#compression_method={"type":"even", "value":2, "num_channels":4}
 	#compression_method={"type":"peaks", "value":10, "num_channels":10}
+=======
+	compression_method={"type":"peaks", "value":10, "num_channels":10}
+>>>>>>> d40a470fc0cea6bafa8ea91c753c767d0695895b
 
 	# setup variables
 	placeholders = c3d.get_input_placeholder(1)

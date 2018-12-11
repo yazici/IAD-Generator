@@ -38,6 +38,7 @@ def convert_iad_to_img(iad, outname):
 
 	img_new = []
 	start_shape = img.shape[2]
+<<<<<<< HEAD
 	
 
 	for i in range(min(img.shape[-1], 3)):
@@ -48,21 +49,46 @@ def convert_iad_to_img(iad, outname):
 		print(type(cur_frame), type(buf))
 		print("cur_frame: ", cur_frame.shape, buf.shape)
 		cur_frame = np.concatenate((cur_frame, buf), axis=1)
+=======
+	for i in range(3):#img.shape[-1]):
+		cur_frame = img[:,:,:,i]
+		print(cur_frame)
+		buf = np.zeros((img.shape[0],img.shape[1], 1))
+
+		print(type(cur_frame), type(buf))
+		print("cur_frame: ", cur_frame.shape, buf.shape)
+		cur_frame = np.concatenate((cur_frame, buf), axis=2)
+>>>>>>> d40a470fc0cea6bafa8ea91c753c767d0695895b
 
 		if(i == 0):
 			img_new = cur_frame
 		else:
+<<<<<<< HEAD
 			img_new = np.concatenate((img_new, cur_frame), axis=1)
 
 	print("img_new: ", img_new.shape)
 	img = img_new
+=======
+			img_new = np.concatenate((img_new, cur_frame), axis=2)
+
+	print("img_new: ", img_new.shape)
+	img = img_new[0]
+>>>>>>> d40a470fc0cea6bafa8ea91c753c767d0695895b
 	img *= 255
 	img.astype(np.uint8)
 	#img = np.reshape(img, (img.shape[1], img.shape[2]))
 
+<<<<<<< HEAD
 	#val = int(img.shape[1]*.5)
 	#img = img[:, :val]
 
+=======
+	val = int(img.shape[1]*.5)
+	img = img[:, :val]
+
+
+	img_frame = np.copy(img)
+>>>>>>> d40a470fc0cea6bafa8ea91c753c767d0695895b
 	img -= 1
 	img = np.stack((img,img,img), axis = 2)
 	for n in range(0, img.shape[1], 10):
@@ -98,8 +124,11 @@ if __name__ == '__main__':
 
 			iad = generate_model_input(tfrecords, sess, c3d_map_depth)
 
+<<<<<<< HEAD
 			#print(iad[0,0,:20,:])
 
+=======
+>>>>>>> d40a470fc0cea6bafa8ea91c753c767d0695895b
 			outfile = infile[:-len(".tfrecord")]+".png"
 			convert_iad_to_img(iad, outfile)
 
