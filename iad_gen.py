@@ -8,6 +8,8 @@ from os.path import join, isdir, isfile
 
 from thresholding_3d import thresholding
 
+from multiprocessing import Pool
+
 C3D_NETWORK_VARIABLE_FILE = "../../../cnn3d-str/C3D-tensorflow/sports1m_finetuning_ucf101.model"
 
 
@@ -123,18 +125,11 @@ def convert_to_IAD_input(placeholders, tf_records, sess, c3d_model, thresholding
 
 	thresholded_data = thresholding(c3d_activation_map[0], info_values["data_ratio"], compression_method, thresholding_approach)
 
-<<<<<<< HEAD
 	print(thresholded_data.shape)
 	print(thresholded_data)
 
 	
 	ex = make_sequence_example(thresholded_data, info_values["label"][0], info_values["example_id"][0], c3d_depth, compression_method["num_channels"])
-=======
-	print(thresholded_data)
-
-
-	ex = make_sequence_example(thresholded_data, info_values["label"][0], info_values["example_id"][0], c3d_depth, compression_method["value"])
->>>>>>> d40a470fc0cea6bafa8ea91c753c767d0695895b
 	print("write to: ", video_name)
 	writer = tf.python_io.TFRecordWriter(video_name)
 	writer.write(ex.SerializeToString())
@@ -145,20 +140,16 @@ if __name__ == '__main__':
 
 	# open the files 
  
-<<<<<<< HEAD
  	compression_method={"type":"max", "value":1, "num_channels":1}
  	#compression_method={"type":"even", "value":2, "num_channels":4}
 	#compression_method={"type":"peaks", "value":10, "num_channels":10}
-=======
-	compression_method={"type":"peaks", "value":10, "num_channels":10}
->>>>>>> d40a470fc0cea6bafa8ea91c753c767d0695895b
 
 	# setup variables
 	placeholders = c3d.get_input_placeholder(1)
 	weights, biases = c3d.get_variables()
 	variable_name_dict = list( set(weights.values() + biases.values()))
 
-	cur_dir = "../one_person_tfrecords"
+	cur_dir = "~/epic-kitchens/train_records/"
 	filenames = read_files_in_dir(cur_dir)
 	for f in filenames:
 		print(f)
@@ -166,7 +157,7 @@ if __name__ == '__main__':
 	
 
 	for c3d_depth in range(5):
-		new_dir = "../iad_3d_tfrecords_"+compression_method["type"]+"/"+str(c3d_depth)+"/"
+		new_dir = "~/epic-kitchens/iad_records/"+compression_method["type"]+"/"+str(c3d_depth)+"/"
 
 		# define model
 		c3d_model = c3d.generate_activation_map(placeholders, weights, biases, depth=c3d_depth)
@@ -201,10 +192,6 @@ if __name__ == '__main__':
 				print(new_dir_name)
 				if not os.path.exists(new_dir_name):
 					os.makedirs(new_dir_name)
-
-
-
-
 				
 				convert_to_IAD_input(placeholders, src, sess, c3d_model, "norm", compression_method, new_name, c3d_depth)
 
@@ -212,4 +199,8 @@ if __name__ == '__main__':
 			coord.join(threads)
 		
 		#tf.reset_default_graph()
+
+
+		p = Pool(4)
+		p.map(process_records2, range(len(records)))
 

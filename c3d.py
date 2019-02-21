@@ -1,9 +1,7 @@
 import tensorflow as tf 
 
-
-
 # t = number of frames, h = height, w = width, c = number of channels
-INPUT_DATA_SIZE = {"t": 256, "h":112, "w":112, "c":3}
+INPUT_DATA_SIZE = {"t": 512, "h":112, "w":112, "c":3}
 
 def get_input_placeholder(batch_size):
 	# returns a placeholder for the C3D input
