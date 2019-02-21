@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
 	input_dir = sys.argv[1]
 
-	filenames = read_files_in_dir(cur_dir)
+	filenames = read_files_in_dir(input_dir)
 
 	t_s = time.time()
 
