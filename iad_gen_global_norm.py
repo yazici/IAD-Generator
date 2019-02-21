@@ -204,7 +204,7 @@ def write_to_tfrecord(filename, iad, info_values):
 	writer.write(ex.SerializeToString())
 	writer.close()
 
-def convert_videos_to_IAD(file_reader=FileReader, c3d_depth, records=None):
+def convert_videos_to_IAD(file_reader, c3d_depth, records=None):
 	'''
 	opens an unthreshodled IAD and thresholds given the new values
 		- records - providing a records variable indicates that the function is 
