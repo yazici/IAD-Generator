@@ -4,53 +4,62 @@ import numpy as np
 import os, random
 from os.path import isfile, join, isdir
 
+import rosbag
+
 VERB_CLASSES = 125
 NOUN_CLASSES = 331
 
 time_window= 512
 
 class FileReader:
-	def __init__(self, config):
-		pass
+	def __init__(self, filenames, batch_size=1):
+		self.filenames = filenames
+		self.batch_size = batch_size
 
-	def input_pipeline(filenames, batch_size=1, randomize=False):
-		pass
-
-	def generate_model_input(placeholders, data_source, sess):
+	def generate_model_input(placeholders, sess):
 		pass
 
 
 
 class RosBagFileReader(FileReader):
-	def __init__(self, config):
-		pass
-
-	def input_pipeline(filenames, batch_size=1, randomize=False):
-		'''Store names of files and current file tracker
-		'''
-								
-		return batched_output
+	def __init__(self, filenames, batch_size):
+		super().__init(filenames, batch_size)
+		self.file_tracker = 0
 
 	def generate_model_input(placeholders, sess):
 		'''Read file in storage and place in appropriate placeholders
 		'''
+		file = self.filenames[self.file_tracker]
+		self.file_tracker = self.file_tracker+1
+
+		bag = rosbag.Bag(file)
+
+		img_data = []
+		for topic, msg, t in bag.read_messages(topics=["/kinect2/rgb/image/compressed"]):
+			img_data.append(msg.data)
+
+		img_data = np.ndaray(img_data)
+
+		print("img_data:", img_data.shape)
+
 		placeholder_values = { placeholders: img_data}
 
 		information_values = {
 			"uid": np_values["uid"][0],
 			"length": np_values["length"],
-			"verb": np_values["verb"][0],
-			"noun": np_values["noun"][0],
+			"label": label,
 			"data_ratio": data_ratio}
 
 		return placeholder_values, information_values
 
 
 class TFRecordFileReader(FileReader):
-	def __init__(self, config):
-		pass
+	def __init__(self, filenames, batch_size):
+		super().__init(filenames, batch_size)
 
-	def input_pipeline(filenames, batch_size=1, randomize=False):
+		self.tf_records = input_pipeline(self.filenames, batch_size=self.batch_size)
+
+	def input_pipeline(batch_size=1, randomize=False):
 		'''
 		Read TFRecords into usable arrays
 			-filenames: an array of string filenames
@@ -60,7 +69,7 @@ class TFRecordFileReader(FileReader):
 
 		# read the files one at a time
 		filename_queue = tf.train.string_input_producer(
-				filenames, shuffle=randomize)
+				self.filenames, shuffle=randomize)
 		
 		# --------------------
 		# parse tfrecord files and define file as a single "data_tensor"
@@ -118,7 +127,7 @@ class TFRecordFileReader(FileReader):
 										
 		return batched_output
 
-	def	generate_model_input(placeholders, data_source, sess):
+	def	generate_model_input(placeholders, sess):
 		'''
 		Reads a single entry from the specified data_source and stores the entry in
 		the provided placeholder for use in sess
@@ -129,7 +138,7 @@ class TFRecordFileReader(FileReader):
 		'''
 
 		# read a single entry of the data_source into numpy arrays
-		input_tensor = [sess.run(data_source)][0]
+		input_tensor = [sess.run(self.tf_records)][0]
 
 		np_values = {"img": input_tensor[0],
 					"uid": input_tensor[1],

@@ -1,4 +1,4 @@
-from file_io import read_file, generate_model_input
+from file_io import RosBagFileReader
 from iad_gen_global_norm import convert_videos_to_IAD, global_norm, read_files_in_dir
 
 if __name__ == '__main__':
@@ -29,7 +29,7 @@ if __name__ == '__main__':
 		records = Queue()
 
 		# get the maximum and mimimum activation values for each iad row
-		max_vals, min_vals = convert_videos_to_IAD(filenames, c3d_depth, records)
+		max_vals, min_vals = convert_videos_to_IAD(RosBagFileReader, c3d_depth, records)
 
 		#need to reset graph after each map generation because graphs are read-only
 		tf.reset_default_graph()

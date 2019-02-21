@@ -4,7 +4,8 @@ import time, tempfile, sys
 
 #file_io
 import c3d 
-from file_io import input_pipeline, generate_model_input
+from file_io import FileReader
+#from file_io import input_pipeline, generate_model_input
 import os
 from os.path import join, isdir, isfile
 
@@ -203,7 +204,7 @@ def write_to_tfrecord(filename, iad, info_values):
 	writer.write(ex.SerializeToString())
 	writer.close()
 
-def convert_videos_to_IAD(filenames, c3d_depth, records=None):
+def convert_videos_to_IAD(file_reader=FileReader, c3d_depth, records=None):
 	'''
 	opens an unthreshodled IAD and thresholds given the new values
 		- records - providing a records variable indicates that the function is 
@@ -237,7 +238,8 @@ def convert_videos_to_IAD(filenames, c3d_depth, records=None):
 			saver.restore(sess, C3D_NETWORK_VARIABLE_FILE)
 
 			#setup file io
-			tf_records = input_pipeline(filenames, batch_size=BATCH_SIZE)
+			fr = file_reader(filenames, batch_size=BATCH_SIZE)
+
 			sess.graph.finalize()
 			coord = tf.train.Coordinator()
 			threads = tf.train.start_queue_runners(coord=coord, sess=sess)
@@ -251,7 +253,7 @@ def convert_videos_to_IAD(filenames, c3d_depth, records=None):
 					print("Converted "+str(i)+" files")
 
 				
-				ph_values, info_values = generate_model_input(placeholders, tf_records, sess)#EPIC_KITCHENS
+				ph_values, info_values = fr.generate_model_input(placeholders, sess)#EPIC_KITCHENS
 
 				all_procs = []
 
