@@ -1,7 +1,7 @@
 from file_io import RosBagFileReader
 from iad_gen_global_norm import convert_videos_to_IAD, global_norm, read_files_in_dir
 
-import sys, time
+import sys, time, os
 
 if __name__ == '__main__':
 
