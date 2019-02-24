@@ -5,28 +5,45 @@ import os, random
 from os.path import isfile, join, isdir
 
 import rosbag
+import cv2, scipy
 
 VERB_CLASSES = 125
 NOUN_CLASSES = 331
 
 time_window= 512
 
+ITR_NAMES = ["meets","metBy",
+		"starts",
+		"startedBy",
+		"finishes",
+		"finishedBy",
+		"overlaps",
+		"overlapedBy",
+		"during",
+		"contains",
+		"before",
+		"after",
+		"equals"]
+
 class FileReader:
 	def __init__(self, filenames, batch_size=1):
 		self.filenames = filenames
 		self.batch_size = batch_size
 
-	def generate_model_input(placeholders, sess):
+	def generate_model_input(self, placeholders, sess):
+		pass
+
+	def prime(self):
 		pass
 
 
 
 class RosBagFileReader(FileReader):
 	def __init__(self, filenames, batch_size):
-		super().__init(filenames, batch_size)
+		FileReader.__init__(self,filenames, batch_size)
 		self.file_tracker = 0
 
-	def generate_model_input(placeholders, sess):
+	def generate_model_input(self, placeholders, sess):
 		'''Read file in storage and place in appropriate placeholders
 		'''
 		file = self.filenames[self.file_tracker]
@@ -36,30 +53,54 @@ class RosBagFileReader(FileReader):
 
 		img_data = []
 		for topic, msg, t in bag.read_messages(topics=["/kinect2/rgb/image/compressed"]):
-			img_data.append(msg.data)
+			
+			msg_data = cv2.imdecode(np.fromstring(msg.data, dtype=np.uint8), 1)
+			msg_data = scipy.misc.imresize(msg_data[300:], size=(112, 112))
 
-		img_data = np.ndaray(img_data)
 
-		print("img_data:", img_data.shape)
+			img_data.append(msg_data)
 
-		placeholder_values = { placeholders: img_data}
+		#cv2.imwrite("test.png",img_data[0])
+		img_data = np.array(img_data)
+		buffer_len = 933 - img_data.shape[0]
+		data_ratio = img_data.shape[0]/933.0
+
+		img_data = np.pad(img_data, 
+					((0,buffer_len), (0,0), (0,0),(0,0)), 
+					'constant', 
+					constant_values=(0,0))
+		img_data = np.expand_dims(img_data, axis=0)
+
+		#NEED TO PAD DATA TO A SPECIFIC LENGTH
+
+		#print("img_data:", img_data.shape)
+		#assert 0 , "stop"
+
+		file_name = file.split('/')[-1]
+		label = file_name.split('_')[0]
+		#print("label:", label)
+		label = ITR_NAMES.index(label)
+
+		placeholder_values = { placeholders: img_data }
 
 		information_values = {
-			"uid": np_values["uid"][0],
-			"length": np_values["length"],
+			"uid": self.file_tracker,
+			"length": img_data.shape[0],
 			"label": label,
-			"data_ratio": data_ratio}
+			"data_ratio": data_ratio
+		}
 
 		return placeholder_values, information_values
 
-
 class TFRecordFileReader(FileReader):
 	def __init__(self, filenames, batch_size):
-		super().__init(filenames, batch_size)
+		FileReader.__init__(self, filenames, batch_size)
+		self.tf_records = None
 
+	def prime(self):
 		self.tf_records = input_pipeline(self.filenames, batch_size=self.batch_size)
 
-	def input_pipeline(batch_size=1, randomize=False):
+	def input_pipeline(self, batch_size=1, randomize=False):
 		'''
 		Read TFRecords into usable arrays
 			-filenames: an array of string filenames
@@ -74,7 +115,7 @@ class TFRecordFileReader(FileReader):
 		# --------------------
 		# parse tfrecord files and define file as a single "data_tensor"
 
-		context_parsed, sequence_parsed = parse_sequence_example(filename_queue)
+		context_parsed, sequence_parsed = self.parse_sequence_example(filename_queue)
 
 		def extractFeature(input_tensor, cast=tf.int32):
 			return tf.cast(tf.reshape(input_tensor, [-1]), cast)
@@ -127,7 +168,7 @@ class TFRecordFileReader(FileReader):
 										
 		return batched_output
 
-	def	generate_model_input(placeholders, sess):
+	def	generate_model_input(self, placeholders, sess):
 		'''
 		Reads a single entry from the specified data_source and stores the entry in
 		the provided placeholder for use in sess
@@ -172,7 +213,7 @@ class TFRecordFileReader(FileReader):
 
 		return placeholder_values, information_values
 
-	def parse_sequence_example(filename_queue):
+	def parse_sequence_example(self, filename_queue):
 		'''
 		Reads a TFRecord and separate the output into its constituent parts
 			-filename_queue: a filename queue as generated using string_input_producer
@@ -208,3 +249,4 @@ class TFRecordFileReader(FileReader):
 		}
 		
 		return context_parsed, sequence_data
+

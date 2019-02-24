@@ -4,6 +4,8 @@ import numpy as np
 import os, random
 from os.path import isfile, join, isdir
 
+os.environ["TF_CPP_MIN_LOG_LEVEL"]="3"
+
 VERB_CLASSES = 125
 NOUN_CLASSES = 331
 

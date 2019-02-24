@@ -21,6 +21,8 @@ NUM_THREADS = 4
 
 C3D_NETWORK_VARIABLE_FILE = "../../catkin_ws/src/cnn3d-str/C3D-tensorflow/sports1m_finetuning_ucf101.model"
 
+compression_method={"type":"max", "value":1, "num_channels":1}
+
 ##### File I/O #####
 
 def read_files_in_dir(directory):
@@ -34,7 +36,7 @@ def read_files_in_dir(directory):
 			all_files += read_files_in_dir(f)
 	
 	return all_files
-
+'''
 def make_sequence_example(
 	img_raw, 
 
@@ -70,7 +72,41 @@ def make_sequence_example(
 	load_array(ex, "img_raw", img_raw, np.float32)
 
 	return ex
+'''
+def make_sequence_example(
+	img_raw, 
 
+	info_values,
+
+	c3d_depth,
+	num_channels):
+
+
+	# The object we return
+	ex = tf.train.SequenceExample()
+
+	# ---- descriptive data ----
+
+	ex.context.feature["length"].int64_list.value.append(img_raw.shape[1])
+	ex.context.feature["uid"].int64_list.value.append(info_values["uid"])
+
+	# ---- label data ----
+
+	ex.context.feature["label"].int64_list.value.append(info_values["label"])
+
+
+	ex.context.feature["c3d_depth"].int64_list.value.append(c3d_depth)
+	ex.context.feature["num_channels"].int64_list.value.append(num_channels)
+	
+	# ---- data sequences ----
+
+	def load_array(example, name, data, dtype):
+		fl_data = example.feature_lists.feature_list[name].feature.add().bytes_list.value
+		fl_data.append(np.asarray(data).astype(dtype).tostring())
+
+	load_array(ex, "img_raw", img_raw, np.float32)
+
+	return ex
 ##### Get the Maximum and Minimum Values of IADs #####
 
 class Record:
@@ -92,7 +128,7 @@ def get_row_min_max(c3d_activation_map, info_values, sem, max_vals, min_vals, re
 
 	for i in range(len(local_max_values)):
 
-		print(i, len(local_max_values),  len(max_vals))
+		#print(i, len(local_max_values),  len(max_vals))
 
 		if(local_max_values[i] > max_vals[i]):
 			max_vals[i] = local_max_values[i]
@@ -133,7 +169,7 @@ def rethreshold_iad(iad, max_vals, min_vals):
 		iad[index] = data_row
 	return iad
 
-def repeat_threshold(unthresholded_data, record, sem, max_vals, min_vals):
+def repeat_threshold(unthresholded_data, record, sem, max_vals, min_vals, c3d_depth, output_dir):
 	'''
 	Convert activation map into IAD. Takes the following parameters:
 		- c3d_activation_map
@@ -145,12 +181,12 @@ def repeat_threshold(unthresholded_data, record, sem, max_vals, min_vals):
 	thresholded_data = rethreshold_iad(unthresholded_data, max_vals, min_vals)
 	
 	#write file	
-	filename = new_dir + str(record.uid).zfill(6)+".tfrecord"
-	write_to_tfrecord(filename, thresholded_data, record.info_values)
+	filename = output_dir + str(record.uid).zfill(6)+".tfrecord"
+	write_to_tfrecord(filename, thresholded_data, record.info_values, c3d_depth)
 	
 	sem.release()
 
-def global_norm(records, max_vals, min_vals):
+def global_norm(records, max_vals, min_vals, c3d_depth, output_dir):
 	'''
 	opens an unthreshodled IAD and thresholds given the new values
 	'''
@@ -170,7 +206,7 @@ def global_norm(records, max_vals, min_vals):
 		os.system("rm "+r.filename)
 
 		sem.acquire()
-		p = Thread(target=repeat_threshold, args=(unthresholded_data, r,sem, max_vals, min_vals))
+		p = Thread(target=repeat_threshold, args=(unthresholded_data, r,sem, max_vals, min_vals, c3d_depth, output_dir))
 		p.start()
 		all_procs.append(p)
 		i+=1
@@ -194,7 +230,7 @@ def threshold_iad(c3d_activation_map, info_values, sem):
 
 ##### Ubiquitious Code #####
 
-def write_to_tfrecord(filename, iad, info_values):
+def write_to_tfrecord(filename, iad, info_values, c3d_depth):
 	'''
 	Get the IAD for the activation map and record the highest and lowest observed values.
 	'''
@@ -238,7 +274,7 @@ def convert_videos_to_IAD(file_reader, c3d_depth, records=None):
 			saver.restore(sess, C3D_NETWORK_VARIABLE_FILE)
 
 			#setup file io
-			fr = file_reader(filenames, batch_size=BATCH_SIZE)
+			file_reader.prime()
 
 			sess.graph.finalize()
 			coord = tf.train.Coordinator()
@@ -248,12 +284,13 @@ def convert_videos_to_IAD(file_reader, c3d_depth, records=None):
 			sem = Semaphore(NUM_THREADS)
 			
 			#process files
-			for i in range(len(filenames)):
+			for i in range(len(file_reader.filenames)):
+				print("converting file: ", file_reader.filenames[i])
 				if(i %1000 == 0 ):
 					print("Converted "+str(i)+" files")
 
 				
-				ph_values, info_values = fr.generate_model_input(placeholders, sess)#EPIC_KITCHENS
+				ph_values, info_values = file_reader.generate_model_input(placeholders, sess)#EPIC_KITCHENS
 
 				all_procs = []
 
@@ -341,7 +378,7 @@ if __name__ == '__main__':
 				tf.reset_default_graph()
 
 				# generate IADs using the earlier identified values
-				global_norm(records, max_vals, min_vals)
+				global_norm(records, max_vals, min_vals, c3d_depth, new_dir)
 
 				tf.reset_default_graph()
 

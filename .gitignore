@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+*.tfrecord
+*.csv
+*.npy
+*.txt
+
 # Distribution / packaging
 .Python
 build/
